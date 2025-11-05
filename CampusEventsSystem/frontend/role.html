@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Select Role</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🎓 Welcome to Campus Events</h1>
+  <p>Select your role:</p>
+
+  <button onclick="setRole('student')">I’m a Student</button>
+  <button onclick="showAdminLogin()">I’m an Admin</button>
+
+  <!-- Hidden admin login section -->
+  <div id="admin-login" style="display: none; margin-top: 20px;">
+    <h3>🔒 Admin Login</h3>
+    <input type="password" id="adminId" placeholder="Enter Admin ID" />
+    <button onclick="verifyAdmin()">Login</button>
+    <p id="loginError" style="color: red;"></p>
+  </div>
+
+  <script>
+    // 🧩 Step 1 — Only these IDs are valid admins
+    const allowedAdmins = [
+      "231000669", // Member 1
+      "231000241", // Member 2
+      "231002427", // Member 3
+      "231000834"  // Member 4
+    ];
+
+    // Student role
+    function setRole(role) {
+      localStorage.setItem("role", role);
+      window.location.href = "index.html";
+    }
+
+    // Show Admin login box
+    function showAdminLogin() {
+      document.getElementById("admin-login").style.display = "block";
+    }
+
+    // Verify Admin ID
+    function verifyAdmin() {
+      const adminId = document.getElementById("adminId").value.trim();
+      const errorMsg = document.getElementById("loginError");
+
+      if (allowedAdmins.includes(adminId)) {
+        localStorage.setItem("role", "admin");
+        localStorage.setItem("adminId", adminId); // store who logged in
+        alert("✅ Welcome, Admin " + adminId + "!");
+        window.location.href = "index.html";
+      } else {
+        errorMsg.innerText = "❌ Unknown user — access denied.";
+      }
+    }
+  </script>
+</body>
+</html>
