@@ -15,14 +15,19 @@ function isAdmin(req) {
 
 // Get all events
 app.get('/events', (req, res) => {
-  res.json(eventStore.getAll());
+  eventStore.getAll((err, events) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(events);
+  });
 });
 
 // Get event by id
 app.get('/events/:id', (req, res) => {
-  const event = eventStore.get(req.params.id);
-  if (!event) return res.status(404).json({ error: 'Event not found' });
-  res.json(event);
+  eventStore.get(req.params.id, (err, event) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    res.json(event);
+  });
 });
 
 // Add event (admin only)
@@ -32,17 +37,24 @@ app.post('/events', (req, res) => {
   if (!title || !date || !location || !description) {
     return res.status(400).json({ error: 'Missing fields' });
   }
-  eventStore.add({ title, date, location, description });
-  res.status(201).json({ message: 'Event added' });
+  eventStore.add({ title, date, location, description }, (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.status(201).json({ message: 'Event added' });
+  });
 });
 
 // Delete event (admin only)
 app.delete('/events/:id', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
-  const event = eventStore.get(req.params.id);
-  if (!event) return res.status(404).json({ error: 'Event not found' });
-  eventStore.delete(req.params.id);
-  res.json({ message: 'Event deleted' });
+  eventStore.get(req.params.id, (err, event) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    
+    eventStore.delete(req.params.id, (err) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ message: 'Event deleted' });
+    });
+  });
 });
 
 app.listen(PORT, () => {
