@@ -13,6 +13,11 @@ function isAdmin(req) {
   return req.query.role === 'admin' || req.headers['x-role'] === 'admin';
 }
 
+// Helper: check student (simulate via ?role=student or header)
+function isStudent(req) {
+  return req.query.role === 'student' || req.headers['x-role'] === 'student';
+}
+
 // Get all events
 app.get('/events', (req, res) => {
   eventStore.getAll((err, events) => {
@@ -54,6 +59,53 @@ app.delete('/events/:id', (req, res) => {
       if (err) return res.status(500).json({ error: 'Database error' });
       res.json({ message: 'Event deleted' });
     });
+  });
+});
+
+// Register student for event
+app.post('/events/:id/register', (req, res) => {
+  if (!isStudent(req)) return res.status(403).json({ error: 'Student only' });
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ error: 'Missing studentId' });
+
+  eventStore.registerStudent(req.params.id, studentId, (err) => {
+    if (err) {
+      if (err.message && err.message.includes('UNIQUE')) {
+        return res.status(400).json({ error: 'Already registered' });
+      }
+      return res.status(500).json({ error: 'Database error: ' + err.message });
+    }
+    res.status(201).json({ message: 'Registered successfully' });
+  });
+});
+
+// Unregister student from event
+app.delete('/events/:id/register', (req, res) => {
+  if (!isStudent(req)) return res.status(403).json({ error: 'Student only' });
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ error: 'Missing studentId' });
+
+  eventStore.unregisterStudent(req.params.id, studentId, (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ message: 'Unregistered successfully' });
+  });
+});
+
+// Check if student is registered
+app.get('/events/:id/registered/:studentId', (req, res) => {
+  eventStore.isStudentRegistered(req.params.id, req.params.studentId, (err, isRegistered) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ registered: isRegistered });
+  });
+});
+
+// Get event registrations (admin only)
+app.get('/events/:id/registrations', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+  
+  eventStore.getRegistrations(req.params.id, (err, registrations) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ registrations, count: registrations.length });
   });
 });
 

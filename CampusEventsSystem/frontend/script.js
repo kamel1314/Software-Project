@@ -48,6 +48,50 @@ async function deleteEventAPI(eventId) {
   }
 }
 
+// Helper: Register student for event
+async function registerForEvent(eventId, studentId) {
+  try {
+    const role = getRole();
+    const response = await fetch(API_URL + `/${eventId}/register?role=${role}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error("Error registering:", error);
+    return false;
+  }
+}
+
+// Helper: Unregister student from event
+async function unregisterFromEvent(eventId, studentId) {
+  try {
+    const role = getRole();
+    const response = await fetch(API_URL + `/${eventId}/register?role=${role}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error("Error unregistering:", error);
+    return false;
+  }
+}
+
+// Helper: Check if student is registered
+async function checkRegistration(eventId, studentId) {
+  try {
+    const response = await fetch(API_URL + `/${eventId}/registered/${studentId}`);
+    const data = await response.json();
+    return data.registered;
+  } catch (error) {
+    console.error("Error checking registration:", error);
+    return false;
+  }
+}
+
 // Hide Add Event button for students
 document.addEventListener("DOMContentLoaded", function () {
   const role = getRole();
@@ -115,33 +159,56 @@ document.addEventListener("DOMContentLoaded", function () {
   if (detailsContainer) {
     const params = new URLSearchParams(window.location.search);
     const eventId = params.get("id");
+    const role = getRole();
+    const studentId = role === "student" ? localStorage.getItem("studentId") : null;
     
     fetchEvents().then((events) => {
       const event = events.find(e => e.id == eventId);
-      const role = getRole();
 
       if (event) {
         let buttonHTML = "";
 
-        // 🧾 Register for Students (Phase 1 visual only)
-        if (role === "student") {
-          buttonHTML = `<button>📝 Register</button>`;
-        }
-
-        // 🗑️ Delete for Admins
-        if (role === "admin") {
+        // 🧾 Register for Students
+        if (role === "student" && studentId) {
+          checkRegistration(eventId, studentId).then((isRegistered) => {
+            if (isRegistered) {
+              buttonHTML = `<button onclick="handleUnregister(${eventId}, '${studentId}')">✅ Registered - Click to Unregister</button>`;
+            } else {
+              buttonHTML = `<button onclick="handleRegister(${eventId}, '${studentId}')">📝 Register</button>`;
+            }
+            updateEventDetails(event, buttonHTML);
+          });
+        } else if (role === "admin") {
+          // 🗑️ Delete for Admins
           buttonHTML = `<button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>`;
+          updateEventDetails(event, buttonHTML);
         }
 
-        detailsContainer.innerHTML = `
-          <h2>${event.title}</h2>
-          <p><b>Date:</b> ${event.date}</p>
-          <p><b>Location:</b> ${event.location}</p>
-          <p>${event.description}</p>
-          ${buttonHTML}
-          <br><br>
-          <a href="index.html">← Back to Events</a>
-        `;
+        function updateEventDetails(event, buttonHTML) {
+          let content = `
+            <h2>${event.title}</h2>
+            <p><b>Date:</b> ${event.date}</p>
+            <p><b>Location:</b> ${event.location}</p>
+            <p>${event.description}</p>
+            ${buttonHTML}
+          `;
+
+          // Show registrations for admin
+          if (role === "admin") {
+            content += `<br><br><div id="registrations-section" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+              <h3>📋 Registrations</h3>
+              <div id="registrations-list">Loading...</div>
+            </div>`;
+          }
+
+          content += `<br><br><a href="index.html">← Back to Events</a>`;
+          detailsContainer.innerHTML = content;
+
+          // Load registrations for admin
+          if (role === "admin") {
+            loadRegistrations(eventId);
+          }
+        }
       } else {
         detailsContainer.innerHTML = "<p>Event not found.</p>";
       }
@@ -152,6 +219,61 @@ document.addEventListener("DOMContentLoaded", function () {
 // 🔗 Go to details page
 function viewEvent(eventId) {
   window.location.href = `event.html?id=${eventId}`;
+}
+
+// 📝 Register for event
+async function handleRegister(eventId, studentId) {
+  if (!studentId) {
+    alert("❌ Student ID not found. Please log in again.");
+    return;
+  }
+  
+  const success = await registerForEvent(eventId, studentId);
+  if (success) {
+    alert("✅ Registered successfully!");
+    location.reload();
+  } else {
+    alert("❌ Failed to register. Please try again or check your internet connection.");
+  }
+}
+
+// 📝 Unregister from event
+async function handleUnregister(eventId, studentId) {
+  const confirmed = confirm("Are you sure you want to unregister?");
+  if (confirmed) {
+    const success = await unregisterFromEvent(eventId, studentId);
+    if (success) {
+      alert("✅ Unregistered successfully!");
+      location.reload();
+    } else {
+      alert("❌ Failed to unregister.");
+    }
+  }
+}
+
+// 📋 Load registrations for admin
+async function loadRegistrations(eventId) {
+  try {
+    const role = getRole();
+    const response = await fetch(API_URL + `/${eventId}/registrations?role=${role}`);
+    const data = await response.json();
+    const registrationsList = document.getElementById("registrations-list");
+
+    if (data.registrations.length === 0) {
+      registrationsList.innerHTML = "<p>No registrations yet.</p>";
+    } else {
+      let html = `<p><b>Total Registrations: ${data.count}</b></p><ul>`;
+      data.registrations.forEach((reg) => {
+        const date = new Date(reg.registered_at).toLocaleDateString();
+        html += `<li>${reg.student_id} - Registered on ${date}</li>`;
+      });
+      html += "</ul>";
+      registrationsList.innerHTML = html;
+    }
+  } catch (error) {
+    console.error("Error loading registrations:", error);
+    document.getElementById("registrations-list").innerHTML = "<p>Error loading registrations.</p>";
+  }
 }
 
 // 🗑️ Delete an event
