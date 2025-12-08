@@ -3,65 +3,13 @@
 <head>
   <title>Select Role</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.4);
-    }
-    .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 400px;
-      border-radius: 8px;
-    }
-    .modal-content input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      box-sizing: border-box;
-    }
-    .modal-content button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-    .error {
-      color: red;
-      font-size: 12px;
-    }
-  </style>
 </head>
 <body>
   <h1>🎓 Welcome to Campus Events</h1>
   <p>Select your role:</p>
 
-  <button onclick="showStudentForm()">I'm a Student</button>
+  <button onclick="setRole('student')">I'm a Student</button>
   <button onclick="showAdminLogin()">I'm an Admin</button>
-
-  <!-- Student Info Modal -->
-  <div id="student-modal" class="modal">
-    <div class="modal-content">
-      <h3>Student Information</h3>
-      <label>Student Name:</label>
-      <input type="text" id="studentName" placeholder="Enter your full name" />
-      
-      <label>Student ID (9 digits):</label>
-      <input type="text" id="studentId" placeholder="123456789" maxlength="9" />
-      <p class="error" id="idError"></p>
-      
-      <button onclick="proceedAsStudent()">Proceed</button>
-      <button onclick="closeStudentModal()" style="background: #ccc;">Cancel</button>
-    </div>
-  </div>
 
   <!-- Hidden admin login section -->
   <div id="admin-login" style="display: none; margin-top: 20px;">
@@ -80,43 +28,9 @@
       "231000834"  // Member 4
     ];
 
-    // Show student form
-    function showStudentForm() {
-      document.getElementById("student-modal").style.display = "block";
-    }
-
-    // Close student modal
-    function closeStudentModal() {
-      document.getElementById("student-modal").style.display = "none";
-      document.getElementById("studentName").value = "";
-      document.getElementById("studentId").value = "";
-      document.getElementById("idError").innerText = "";
-    }
-
-    // Proceed as student
-    function proceedAsStudent() {
-      const name = document.getElementById("studentName").value.trim();
-      const id = document.getElementById("studentId").value.trim();
-      const errorMsg = document.getElementById("idError");
-
-      errorMsg.innerText = "";
-
-      if (!name) {
-        errorMsg.innerText = "Please enter your name.";
-        return;
-      }
-
-      if (!id || id.length !== 9 || isNaN(id)) {
-        errorMsg.innerText = "Student ID must be exactly 9 digits.";
-        return;
-      }
-
-      // Save student info
-      localStorage.setItem("role", "student");
-      localStorage.setItem("studentName", name);
-      localStorage.setItem("studentId", id);
-      
-      closeStudentModal();
+    // Student role
+    function setRole(role) {
+      localStorage.setItem("role", role);
       window.location.href = "index.html";
     }
 

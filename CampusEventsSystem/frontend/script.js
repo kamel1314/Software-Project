@@ -7,6 +7,34 @@ function getRole() {
   return localStorage.getItem("role");
 }
 
+// Helper: get student info (prompt when missing). Uses sessionStorage so it is not permanent.
+async function getStudentInfo() {
+  let studentName = sessionStorage.getItem("studentName");
+  let studentId = sessionStorage.getItem("studentId");
+
+  if (!studentName) {
+    studentName = prompt("Enter your full name:");
+    if (!studentName) return null;
+    studentName = studentName.trim();
+    if (!studentName) return null;
+  }
+
+  if (!studentId) {
+    studentId = prompt("Enter your 9-digit student ID:");
+    if (!studentId) return null;
+    studentId = studentId.trim();
+    if (studentId.length !== 9 || isNaN(studentId)) {
+      alert("Student ID must be exactly 9 digits.");
+      return null;
+    }
+  }
+
+  // cache for this session only
+  sessionStorage.setItem("studentName", studentName);
+  sessionStorage.setItem("studentId", studentId);
+  return { studentName, studentId };
+}
+
 // Helper: Fetch all events from backend
 async function fetchEvents() {
   try {
@@ -160,24 +188,33 @@ document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(window.location.search);
     const eventId = params.get("id");
     const role = getRole();
-    const studentId = role === "student" ? localStorage.getItem("studentId") : null;
-    
+  
     fetchEvents().then((events) => {
       const event = events.find(e => e.id == eventId);
 
       if (event) {
         let buttonHTML = "";
 
-        // 🧾 Register for Students
-        if (role === "student" && studentId) {
-          checkRegistration(eventId, studentId).then((isRegistered) => {
+        if (role === "student") {
+          const cachedId = sessionStorage.getItem("studentId");
+
+          // render initial button state
+          const renderStudentButtons = (isRegistered, idForButton) => {
             if (isRegistered) {
-              buttonHTML = `<button onclick="handleUnregister(${eventId}, '${studentId}')">✅ Registered - Click to Unregister</button>`;
+              buttonHTML = `<button onclick="handleUnregister(${eventId}, '${idForButton}')">✅ Registered - Click to Unregister</button>`;
             } else {
-              buttonHTML = `<button onclick="handleRegister(${eventId}, '${studentId}')">📝 Register</button>`;
+              buttonHTML = `<button onclick="handleRegister(${eventId})">📝 Register</button>`;
             }
             updateEventDetails(event, buttonHTML);
-          });
+          };
+
+          if (cachedId) {
+            checkRegistration(eventId, cachedId).then((isRegistered) => {
+              renderStudentButtons(isRegistered, cachedId);
+            }).catch(() => renderStudentButtons(false, cachedId));
+          } else {
+            renderStudentButtons(false, "");
+          }
         } else if (role === "admin") {
           // 🗑️ Delete for Admins
           buttonHTML = `<button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>`;
@@ -222,13 +259,16 @@ function viewEvent(eventId) {
 }
 
 // 📝 Register for event
-async function handleRegister(eventId, studentId) {
-  if (!studentId) {
-    alert("❌ Student ID not found. Please log in again.");
+async function handleRegister(eventId) {
+  if (getRole() !== "student") {
+    alert("Only students can register.");
     return;
   }
-  
-  const success = await registerForEvent(eventId, studentId);
+
+  const info = await getStudentInfo();
+  if (!info) return; // user cancelled or invalid
+
+  const success = await registerForEvent(eventId, info.studentId);
   if (success) {
     alert("✅ Registered successfully!");
     location.reload();
@@ -239,9 +279,14 @@ async function handleRegister(eventId, studentId) {
 
 // 📝 Unregister from event
 async function handleUnregister(eventId, studentId) {
+  const idToUse = studentId || sessionStorage.getItem("studentId");
+  if (!idToUse) {
+    alert("Student ID not found. Please register again to cache your ID.");
+    return;
+  }
   const confirmed = confirm("Are you sure you want to unregister?");
   if (confirmed) {
-    const success = await unregisterFromEvent(eventId, studentId);
+    const success = await unregisterFromEvent(eventId, idToUse);
     if (success) {
       alert("✅ Unregistered successfully!");
       location.reload();
