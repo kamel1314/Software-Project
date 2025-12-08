@@ -25,7 +25,7 @@ module.exports = {
   },
 
   get: (id, callback) => {
-    db.get('SELECT * FROM events WHERE id = ?', [parseInt(id) + 1], (err, row) => {
+    db.get('SELECT * FROM events WHERE id = ?', [id], (err, row) => {
       callback(err, row);
     });
   },
@@ -41,7 +41,7 @@ module.exports = {
   },
 
   delete: (id, callback) => {
-    db.run('DELETE FROM events WHERE id = ?', [parseInt(id) + 1], (err) => {
+    db.run('DELETE FROM events WHERE id = ?', [id], (err) => {
       callback(err);
     });
   },

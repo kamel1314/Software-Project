@@ -35,10 +35,10 @@ async function addEvent(event) {
 }
 
 // Helper: Delete event from backend
-async function deleteEventAPI(index) {
+async function deleteEventAPI(eventId) {
   try {
     const role = getRole();
-    const response = await fetch(API_URL + `/${index}?role=${role}`, {
+    const response = await fetch(API_URL + `/${eventId}?role=${role}`, {
       method: "DELETE",
     });
     return response.ok;
@@ -97,13 +97,13 @@ document.addEventListener("DOMContentLoaded", function () {
       if (events.length === 0) {
         container.innerHTML = "<p>No events yet. Add one!</p>";
       } else {
-        events.forEach((event, index) => {
+        events.forEach((event) => {
           const div = document.createElement("div");
           div.classList.add("event-list-item");
           div.innerHTML = `
             <h3>${event.title}</h3>
             <p>${event.date}</p>
-            <button onclick="viewEvent(${index})">View Details</button>
+            <button onclick="viewEvent(${event.id})">View Details</button>
           `;
           container.appendChild(div);
         });
@@ -113,10 +113,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // 🧩 EVENT DETAILS PAGE
   if (detailsContainer) {
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get("id");
+    
     fetchEvents().then((events) => {
-      const params = new URLSearchParams(window.location.search);
-      const index = params.get("id");
-      const event = events[index];
+      const event = events.find(e => e.id == eventId);
       const role = getRole();
 
       if (event) {
@@ -129,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // 🗑️ Delete for Admins
         if (role === "admin") {
-          buttonHTML = `<button onclick="deleteEvent(${index})">🗑️ Delete Event</button>`;
+          buttonHTML = `<button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>`;
         }
 
         detailsContainer.innerHTML = `
@@ -149,13 +150,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // 🔗 Go to details page
-function viewEvent(index) {
-  window.location.href = `event.html?id=${index}`;
+function viewEvent(eventId) {
+  window.location.href = `event.html?id=${eventId}`;
 }
 
 // 🗑️ Delete an event
-async function deleteEvent(index) {
-  const success = await deleteEventAPI(index);
+async function deleteEvent(eventId) {
+  const success = await deleteEventAPI(eventId);
   if (success) {
     alert("🗑️ Event deleted successfully!");
     window.location.href = "index.html";
