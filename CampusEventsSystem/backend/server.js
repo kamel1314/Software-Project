@@ -209,6 +209,24 @@ app.get('/events/:id/capacity', (req, res) => {
   });
 });
 
+// Analytics: summary (admin only)
+app.get('/analytics/summary', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+  eventStore.getTotals((err, totals) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(totals);
+  });
+});
+
+// Analytics: per-event stats (admin only)
+app.get('/analytics/events', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+  eventStore.getEventStats((err, stats) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ events: stats });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });

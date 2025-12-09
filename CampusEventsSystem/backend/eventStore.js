@@ -121,4 +121,42 @@ module.exports = {
       }
     );
   },
+
+  // Analytics helpers
+  getTotals: (callback) => {
+    db.get('SELECT COUNT(*) AS totalEvents, IFNULL(SUM(capacity), 0) AS totalCapacity FROM events', (errEvents, eventsRow) => {
+      if (errEvents) return callback(errEvents);
+      db.get('SELECT COUNT(*) AS totalRegistrations FROM registrations', (errRegs, regsRow) => {
+        if (errRegs) return callback(errRegs);
+        callback(null, {
+          totalEvents: eventsRow ? eventsRow.totalEvents : 0,
+          totalCapacity: eventsRow ? eventsRow.totalCapacity : 0,
+          totalRegistrations: regsRow ? regsRow.totalRegistrations : 0,
+        });
+      });
+    });
+  },
+
+  getEventStats: (callback) => {
+    db.all(
+      `SELECT e.id, e.title, e.date, e.capacity,
+              IFNULL(COUNT(r.id), 0) AS registrations
+       FROM events e
+       LEFT JOIN registrations r ON r.event_id = e.id
+       GROUP BY e.id
+       ORDER BY e.date ASC, e.id ASC`,
+      (err, rows) => {
+        if (err) return callback(err);
+        const stats = (rows || []).map((row) => ({
+          id: row.id,
+          title: row.title,
+          date: row.date,
+          capacity: row.capacity,
+          registrations: row.registrations,
+          spotsLeft: Math.max(0, (row.capacity || 0) - (row.registrations || 0)),
+        }));
+        callback(null, stats);
+      }
+    );
+  },
 };
