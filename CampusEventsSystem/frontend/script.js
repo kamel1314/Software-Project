@@ -92,6 +92,13 @@ async function updateEvent(eventId, event) {
   }
 }
 
+// Helper: fetch capacity info
+async function fetchCapacity(eventId) {
+  const response = await fetch(API_URL + `/${eventId}/capacity`);
+  if (!response.ok) return null;
+  return await response.json();
+}
+
 // Helper: Register student for event
 async function registerForEvent(eventId, studentId) {
   try {
@@ -158,6 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const title = form.querySelector("input[placeholder='Event Title']").value;
       const date = form.querySelector("input[type='date']").value;
       const location = form.querySelector("input[placeholder='Event Location']").value;
+      const capacityInput = form.querySelector("input[type='number']");
       const description = form.querySelector("textarea").value;
 
       if (!title || !date || !location || !description) {
@@ -165,7 +173,20 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      const newEvent = { title, date, location, description };
+      if (!isValidDateClient(date)) {
+        alert("Invalid date. Use YYYY-MM-DD, real date, today or future.");
+        return;
+      }
+
+      const capacity = capacityInput ? parseInt(capacityInput.value, 10) : NaN;
+      if (!Number.isInteger(capacity) || capacity < 1) {
+        alert("Capacity must be a positive integer.");
+        return;
+      }
+
+      if (!isValidLengths(title, location, description)) return;
+
+      const newEvent = { title, date, location, description, capacity };
       const success = await addEvent(newEvent);
 
       if (success) {
@@ -215,22 +236,48 @@ document.addEventListener("DOMContentLoaded", function () {
           const cachedId = sessionStorage.getItem("studentId");
 
           // render initial button state
-          const renderStudentButtons = (isRegistered, idForButton) => {
+          const renderStudentButtons = (isRegistered, idForButton, spotsLeft) => {
             if (isRegistered) {
               buttonHTML = `<button onclick="handleUnregister(${eventId}, '${idForButton}')">✅ Registered - Click to Unregister</button>`;
             } else {
-              buttonHTML = `<button onclick="handleRegister(${eventId})">📝 Register</button>`;
+              if (typeof spotsLeft === 'number' && spotsLeft <= 0) {
+                buttonHTML = `<button disabled>Event is full</button>`;
+              } else {
+                buttonHTML = `<button onclick="handleRegister(${eventId})">📝 Register</button>`;
+              }
             }
             updateEventDetails(event, buttonHTML);
           };
 
-          if (cachedId) {
-            checkRegistration(eventId, cachedId).then((isRegistered) => {
-              renderStudentButtons(isRegistered, cachedId);
-            }).catch(() => renderStudentButtons(false, cachedId));
-          } else {
-            renderStudentButtons(false, "");
-          }
+          fetchCapacity(eventId).then((capInfo) => {
+            const spotsLeft = capInfo ? capInfo.spotsLeft : undefined;
+            if (cachedId) {
+              checkRegistration(eventId, cachedId).then((isRegistered) => {
+                renderStudentButtons(isRegistered, cachedId, spotsLeft);
+                renderCapacityInfo(capInfo);
+              }).catch(() => {
+                renderStudentButtons(false, cachedId, spotsLeft);
+                renderCapacityInfo(capInfo);
+              });
+            } else {
+              renderStudentButtons(false, "", spotsLeft);
+              renderCapacityInfo(capInfo);
+            }
+          }).catch(() => {
+            const localCapInfo = event.capacity ? { capacity: event.capacity, registered: undefined, spotsLeft: undefined } : null;
+            if (cachedId) {
+              checkRegistration(eventId, cachedId).then((isRegistered) => {
+                renderStudentButtons(isRegistered, cachedId);
+                renderCapacityInfo(localCapInfo);
+              }).catch(() => {
+                renderStudentButtons(false, cachedId);
+                renderCapacityInfo(localCapInfo);
+              });
+            } else {
+              renderStudentButtons(false, "");
+              renderCapacityInfo(localCapInfo);
+            }
+          });
         } else if (role === "admin") {
           // 🗑️ Delete and Edit for Admins
           buttonHTML = `
@@ -238,6 +285,9 @@ document.addEventListener("DOMContentLoaded", function () {
             <button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>
           `;
           updateEventDetails(event, buttonHTML);
+          const localCapInfoAdmin = event.capacity ? { capacity: event.capacity, registered: undefined, spotsLeft: undefined } : null;
+          renderCapacityInfo(localCapInfoAdmin);
+          fetchCapacity(eventId).then((capInfo) => renderCapacityInfo(capInfo || localCapInfoAdmin)).catch(() => renderCapacityInfo(localCapInfoAdmin));
         }
 
         function updateEventDetails(event, buttonHTML) {
@@ -245,6 +295,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <h2>${event.title}</h2>
             <p><b>Date:</b> ${event.date}</p>
             <p><b>Location:</b> ${event.location}</p>
+            <p id="capacity-info"></p>
             <p>${event.description}</p>
             ${buttonHTML}
           `;
@@ -272,9 +323,53 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// Client date validation: format YYYY-MM-DD, real date, today or future
+function isValidDateClient(dateStr) {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dateStr)) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cmp = new Date(Date.UTC(y, m - 1, d));
+  return cmp >= today;
+}
+
+function isValidLengths(title, location, description) {
+  if (!title.trim() || !location.trim() || !description.trim()) {
+    alert("All fields are required.");
+    return false;
+  }
+  if (title.trim().length > 200) {
+    alert("Title too long (max 200 chars).");
+    return false;
+  }
+  if (location.trim().length > 200) {
+    alert("Location too long (max 200 chars).");
+    return false;
+  }
+  if (description.trim().length > 1000) {
+    alert("Description too long (max 1000 chars).");
+    return false;
+  }
+  return true;
+}
+
 // 🔗 Go to details page
 function viewEvent(eventId) {
   window.location.href = `event.html?id=${eventId}`;
+}
+
+function renderCapacityInfo(capInfo) {
+  const el = document.getElementById("capacity-info");
+  if (!el) return;
+  if (!capInfo || !capInfo.capacity) {
+    el.innerText = "";
+    return;
+  }
+  const registered = typeof capInfo.registered === 'number' ? capInfo.registered : '...';
+  const spotsLeft = typeof capInfo.spotsLeft === 'number' ? capInfo.spotsLeft : '...';
+  el.innerHTML = `<b>Capacity:</b> ${capInfo.capacity} | <b>Registered:</b> ${registered} | <b>Spots left:</b> ${spotsLeft}`;
 }
 
 // 📝 Register for event
@@ -355,22 +450,33 @@ async function editEvent(eventId) {
   const newDate = prompt("Edit Date (YYYY-MM-DD):", event.date);
   if (newDate === null) return;
 
+  if (!isValidDateClient(newDate.trim())) {
+    alert("Invalid date. Use YYYY-MM-DD, real date, today or future.");
+    return;
+  }
+
   const newLocation = prompt("Edit Location:", event.location);
   if (newLocation === null) return;
 
   const newDescription = prompt("Edit Description:", event.description);
   if (newDescription === null) return;
 
-  if (!newTitle.trim() || !newDate.trim() || !newLocation.trim() || !newDescription.trim()) {
-    alert("All fields are required.");
+  const newCapacityStr = prompt("Edit Capacity (number):", event.capacity || 100);
+  if (newCapacityStr === null) return;
+  const newCapacity = parseInt(newCapacityStr, 10);
+  if (!Number.isInteger(newCapacity) || newCapacity < 1) {
+    alert("Capacity must be a positive integer.");
     return;
   }
+
+  if (!isValidLengths(newTitle, newLocation, newDescription)) return;
 
   const success = await updateEvent(eventId, {
     title: newTitle.trim(),
     date: newDate.trim(),
     location: newLocation.trim(),
-    description: newDescription.trim()
+    description: newDescription.trim(),
+    capacity: newCapacity
   });
 
   if (success) {

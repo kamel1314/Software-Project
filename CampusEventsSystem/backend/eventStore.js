@@ -12,9 +12,13 @@ db.serialize(() => {
       title TEXT NOT NULL,
       date TEXT NOT NULL,
       location TEXT NOT NULL,
-      description TEXT NOT NULL
+      description TEXT NOT NULL,
+      capacity INTEGER NOT NULL DEFAULT 100
     )
   `);
+
+  // Ensure capacity column exists for older databases
+  db.run(`ALTER TABLE events ADD COLUMN capacity INTEGER NOT NULL DEFAULT 100`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS registrations (
@@ -43,8 +47,8 @@ module.exports = {
 
   add: (event, callback) => {
     db.run(
-      'INSERT INTO events (title, date, location, description) VALUES (?, ?, ?, ?)',
-      [event.title, event.date, event.location, event.description],
+      'INSERT INTO events (title, date, location, description, capacity) VALUES (?, ?, ?, ?, ?)',
+      [event.title, event.date, event.location, event.description, event.capacity],
       function(err) {
         callback(err);
       }
@@ -59,8 +63,8 @@ module.exports = {
 
   update: (id, event, callback) => {
     db.run(
-      'UPDATE events SET title = ?, date = ?, location = ?, description = ? WHERE id = ?',
-      [event.title, event.date, event.location, event.description, id],
+      'UPDATE events SET title = ?, date = ?, location = ?, description = ?, capacity = ? WHERE id = ?',
+      [event.title, event.date, event.location, event.description, event.capacity, id],
       function(err) {
         callback(err);
       }
