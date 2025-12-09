@@ -166,6 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const date = form.querySelector("input[type='date']").value;
       const location = form.querySelector("input[placeholder='Event Location']").value;
       const capacityInput = form.querySelector("input[type='number']");
+      const status = form.querySelector("select").value;
       const description = form.querySelector("textarea").value;
 
       if (!title || !date || !location || !description) {
@@ -186,7 +187,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!isValidLengths(title, location, description)) return;
 
-      const newEvent = { title, date, location, description, capacity };
+      const newEvent = { title, date, location, description, capacity, status };
       const success = await addEvent(newEvent);
 
       if (success) {
@@ -240,7 +241,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (isRegistered) {
               buttonHTML = `<button onclick="handleUnregister(${eventId}, '${idForButton}')">✅ Registered - Click to Unregister</button>`;
             } else {
-              if (typeof spotsLeft === 'number' && spotsLeft <= 0) {
+              // Disable registration if event is cancelled or full
+              if (event.status === 'cancelled') {
+                buttonHTML = `<button disabled>Event is cancelled</button>`;
+              } else if (event.status === 'full') {
+                buttonHTML = `<button disabled>Event is full</button>`;
+              } else if (typeof spotsLeft === 'number' && spotsLeft <= 0) {
                 buttonHTML = `<button disabled>Event is full</button>`;
               } else {
                 buttonHTML = `<button onclick="handleRegister(${eventId})">📝 Register</button>`;
@@ -291,8 +297,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function updateEventDetails(event, buttonHTML) {
+          const statusEmoji = { upcoming: '📅', full: '🔴', cancelled: '❌', completed: '✅' }[event.status] || '❓';
           let content = `
             <h2>${event.title}</h2>
+            <p><b>Status:</b> ${statusEmoji} ${event.status}</p>
             <p><b>Date:</b> ${event.date}</p>
             <p><b>Location:</b> ${event.location}</p>
             <p id="capacity-info"></p>
@@ -472,12 +480,22 @@ async function editEvent(eventId) {
 
   if (!isValidLengths(newTitle, newLocation, newDescription)) return;
 
+  const newStatusStr = prompt("Edit Status (upcoming/full/cancelled/completed):", event.status || 'upcoming');
+  if (newStatusStr === null) return;
+  const newStatus = newStatusStr.trim();
+  const validStatuses = ['upcoming', 'full', 'cancelled', 'completed'];
+  if (!validStatuses.includes(newStatus)) {
+    alert("Invalid status. Must be: upcoming, full, cancelled, or completed.");
+    return;
+  }
+
   const success = await updateEvent(eventId, {
     title: newTitle.trim(),
     date: newDate.trim(),
     location: newLocation.trim(),
     description: newDescription.trim(),
-    capacity: newCapacity
+    capacity: newCapacity,
+    status: newStatus
   });
 
   if (success) {

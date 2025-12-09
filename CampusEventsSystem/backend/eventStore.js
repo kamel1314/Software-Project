@@ -47,8 +47,8 @@ module.exports = {
 
   add: (event, callback) => {
     db.run(
-      'INSERT INTO events (title, date, location, description, capacity) VALUES (?, ?, ?, ?, ?)',
-      [event.title, event.date, event.location, event.description, event.capacity],
+      'INSERT INTO events (title, date, location, description, capacity, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [event.title, event.date, event.location, event.description, event.capacity, event.status || 'upcoming'],
       function(err) {
         callback(err);
       }
@@ -63,8 +63,8 @@ module.exports = {
 
   update: (id, event, callback) => {
     db.run(
-      'UPDATE events SET title = ?, date = ?, location = ?, description = ?, capacity = ? WHERE id = ?',
-      [event.title, event.date, event.location, event.description, event.capacity, id],
+      'UPDATE events SET title = ?, date = ?, location = ?, description = ?, capacity = ?, status = ? WHERE id = ?',
+      [event.title, event.date, event.location, event.description, event.capacity, event.status || 'upcoming', id],
       function(err) {
         callback(err);
       }

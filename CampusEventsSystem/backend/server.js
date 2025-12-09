@@ -47,6 +47,8 @@ function validateEventPayload(body) {
   const location = sanitizeString(body.location);
   const description = sanitizeString(body.description);
   const capacity = parseCapacity(body.capacity);
+  const status = sanitizeString(body.status) || 'upcoming';
+  const validStatuses = ['upcoming', 'full', 'cancelled', 'completed'];
 
   if (!title || !date || !location || !description) {
     return { error: 'Missing fields' };
@@ -64,6 +66,10 @@ function validateEventPayload(body) {
     return { error: 'Capacity must be a positive integer (1-100000).' };
   }
 
+  if (!validStatuses.includes(status)) {
+    return { error: 'Invalid status. Must be: upcoming, full, cancelled, or completed.' };
+  }
+
   return {
     value: {
       title,
@@ -71,6 +77,7 @@ function validateEventPayload(body) {
       location,
       description,
       capacity,
+      status,
     }
   };
 }
@@ -140,6 +147,14 @@ app.post('/events/:id/register', (req, res) => {
   eventStore.get(req.params.id, (err, event) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // Block registration if event is cancelled or full
+    if (event.status === 'cancelled') {
+      return res.status(400).json({ error: 'Event is cancelled' });
+    }
+    if (event.status === 'full') {
+      return res.status(400).json({ error: 'Event is full' });
+    }
 
     const capNum = Number(event.capacity);
     const capacity = Number.isInteger(capNum) && capNum > 0 ? capNum : Infinity;
