@@ -100,13 +100,13 @@ async function fetchCapacity(eventId) {
 }
 
 // Helper: Register student for event
-async function registerForEvent(eventId, studentId) {
+async function registerForEvent(eventId, studentId, studentName) {
   try {
     const role = getRole();
     const response = await fetch(API_URL + `/${eventId}/register?role=${role}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ studentId, studentName }),
     });
     return response.ok;
   } catch (error) {
@@ -382,7 +382,7 @@ async function handleRegister(eventId) {
   const info = await getStudentInfo();
   if (!info) return; // user cancelled or invalid
 
-  const success = await registerForEvent(eventId, info.studentId);
+  const success = await registerForEvent(eventId, info.studentId, info.studentName);
   if (success) {
     alert("✅ Registered successfully!");
     location.reload();
@@ -424,7 +424,8 @@ async function loadRegistrations(eventId) {
       let html = `<p><b>Total Registrations: ${data.count}</b></p><ul>`;
       data.registrations.forEach((reg) => {
         const date = new Date(reg.registered_at).toLocaleDateString();
-        html += `<li>${reg.student_id} - Registered on ${date}</li>`;
+        const name = reg.student_name ? `${reg.student_name} (${reg.student_id})` : reg.student_id;
+        html += `<li>${name} - Registered on ${date}</li>`;
       });
       html += "</ul>";
       registrationsList.innerHTML = html;

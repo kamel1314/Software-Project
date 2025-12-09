@@ -72,10 +72,10 @@ module.exports = {
   },
 
   // Registration functions
-  registerStudent: (eventId, studentId, callback) => {
+  registerStudent: (eventId, studentId, studentName, callback) => {
     db.run(
-      'INSERT INTO registrations (event_id, student_id) VALUES (?, ?)',
-      [eventId, studentId],
+      'INSERT INTO registrations (event_id, student_id, student_name) VALUES (?, ?, ?)',
+      [eventId, studentId, studentName],
       function(err) {
         callback(err);
       }
@@ -94,7 +94,7 @@ module.exports = {
 
   getRegistrations: (eventId, callback) => {
     db.all(
-      'SELECT student_id, registered_at FROM registrations WHERE event_id = ? ORDER BY registered_at ASC',
+      'SELECT student_id, student_name, registered_at FROM registrations WHERE event_id = ? ORDER BY registered_at ASC',
       [eventId],
       (err, rows) => {
         callback(err, rows || []);

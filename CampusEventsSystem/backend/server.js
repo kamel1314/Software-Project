@@ -133,8 +133,9 @@ app.delete('/events/:id', (req, res) => {
 // Register student for event
 app.post('/events/:id/register', (req, res) => {
   if (!isStudent(req)) return res.status(403).json({ error: 'Student only' });
-  const { studentId } = req.body;
+  const { studentId, studentName } = req.body;
   if (!studentId) return res.status(400).json({ error: 'Missing studentId' });
+  if (!studentName || !studentName.trim()) return res.status(400).json({ error: 'Missing studentName' });
 
   eventStore.get(req.params.id, (err, event) => {
     if (err) return res.status(500).json({ error: 'Database error' });
@@ -149,7 +150,7 @@ app.post('/events/:id/register', (req, res) => {
         return res.status(400).json({ error: 'Event is full' });
       }
 
-      eventStore.registerStudent(req.params.id, studentId, (regErr) => {
+      eventStore.registerStudent(req.params.id, studentId, studentName.trim(), (regErr) => {
         if (regErr) {
           if (regErr.message && regErr.message.includes('UNIQUE')) {
             return res.status(400).json({ error: 'Already registered' });
