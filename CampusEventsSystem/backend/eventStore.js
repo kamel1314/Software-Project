@@ -57,6 +57,16 @@ module.exports = {
     });
   },
 
+  update: (id, event, callback) => {
+    db.run(
+      'UPDATE events SET title = ?, date = ?, location = ?, description = ? WHERE id = ?',
+      [event.title, event.date, event.location, event.description, id],
+      function(err) {
+        callback(err);
+      }
+    );
+  },
+
   // Registration functions
   registerStudent: (eventId, studentId, callback) => {
     db.run(

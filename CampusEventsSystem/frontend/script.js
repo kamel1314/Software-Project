@@ -76,6 +76,22 @@ async function deleteEventAPI(eventId) {
   }
 }
 
+// Helper: Update event in backend
+async function updateEvent(eventId, event) {
+  try {
+    const role = getRole();
+    const response = await fetch(API_URL + `/${eventId}?role=${role}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error("Error updating event:", error);
+    return false;
+  }
+}
+
 // Helper: Register student for event
 async function registerForEvent(eventId, studentId) {
   try {
@@ -216,8 +232,11 @@ document.addEventListener("DOMContentLoaded", function () {
             renderStudentButtons(false, "");
           }
         } else if (role === "admin") {
-          // 🗑️ Delete for Admins
-          buttonHTML = `<button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>`;
+          // 🗑️ Delete and Edit for Admins
+          buttonHTML = `
+            <button onclick="editEvent(${event.id})">✏️ Edit Event</button>
+            <button onclick="deleteEvent(${event.id})">🗑️ Delete Event</button>
+          `;
           updateEventDetails(event, buttonHTML);
         }
 
@@ -318,6 +337,47 @@ async function loadRegistrations(eventId) {
   } catch (error) {
     console.error("Error loading registrations:", error);
     document.getElementById("registrations-list").innerHTML = "<p>Error loading registrations.</p>";
+  }
+}
+
+// ✏️ Edit an event
+async function editEvent(eventId) {
+  const events = await fetchEvents();
+  const event = events.find(e => e.id == eventId);
+  if (!event) {
+    alert("Event not found.");
+    return;
+  }
+
+  const newTitle = prompt("Edit Title:", event.title);
+  if (newTitle === null) return;
+
+  const newDate = prompt("Edit Date (YYYY-MM-DD):", event.date);
+  if (newDate === null) return;
+
+  const newLocation = prompt("Edit Location:", event.location);
+  if (newLocation === null) return;
+
+  const newDescription = prompt("Edit Description:", event.description);
+  if (newDescription === null) return;
+
+  if (!newTitle.trim() || !newDate.trim() || !newLocation.trim() || !newDescription.trim()) {
+    alert("All fields are required.");
+    return;
+  }
+
+  const success = await updateEvent(eventId, {
+    title: newTitle.trim(),
+    date: newDate.trim(),
+    location: newLocation.trim(),
+    description: newDescription.trim()
+  });
+
+  if (success) {
+    alert("✅ Event updated successfully!");
+    location.reload();
+  } else {
+    alert("❌ Failed to update event. Make sure you're logged in as admin.");
   }
 }
 

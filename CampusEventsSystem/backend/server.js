@@ -48,6 +48,19 @@ app.post('/events', (req, res) => {
   });
 });
 
+// Update event (admin only)
+app.put('/events/:id', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+  const { title, date, location, description } = req.body;
+  if (!title || !date || !location || !description) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+  eventStore.update(req.params.id, { title, date, location, description }, (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ message: 'Event updated' });
+  });
+});
+
 // Delete event (admin only)
 app.delete('/events/:id', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
