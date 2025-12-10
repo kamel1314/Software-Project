@@ -148,9 +148,12 @@ app.post('/events/:id/register', (req, res) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
-    // Block registration if event is cancelled or full
+    // Block registration if event is cancelled, completed, or marked full
     if (event.status === 'cancelled') {
       return res.status(400).json({ error: 'Event is cancelled' });
+    }
+    if (event.status === 'completed') {
+      return res.status(400).json({ error: 'Event is completed' });
     }
     if (event.status === 'full') {
       return res.status(400).json({ error: 'Event is full' });
@@ -165,6 +168,8 @@ app.post('/events/:id/register', (req, res) => {
         return res.status(400).json({ error: 'Event is full' });
       }
 
+      const willBeFull = count + 1 >= capacity;
+
       eventStore.registerStudent(req.params.id, studentId, studentName.trim(), (regErr) => {
         if (regErr) {
           if (regErr.message && regErr.message.includes('UNIQUE')) {
@@ -172,7 +177,23 @@ app.post('/events/:id/register', (req, res) => {
           }
           return res.status(500).json({ error: 'Database error: ' + regErr.message });
         }
-        res.status(201).json({ message: 'Registered successfully' });
+
+        if (willBeFull && event.status !== 'full') {
+          const updatedEvent = {
+            title: event.title,
+            date: event.date,
+            location: event.location,
+            description: event.description,
+            capacity: event.capacity,
+            status: 'full'
+          };
+          // Best-effort status sync so UI reflects capacity reached
+          return eventStore.update(req.params.id, updatedEvent, () => {
+            res.status(201).json({ message: 'Registered successfully', status: 'full' });
+          });
+        }
+
+        res.status(201).json({ message: 'Registered successfully', status: event.status });
       });
     });
   });
