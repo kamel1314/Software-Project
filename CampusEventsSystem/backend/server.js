@@ -22,12 +22,12 @@ function isValidDate(dateStr) {
   return cmp >= today;
 }
 
-// Helper: check admin (simulate via ?role=admin or header)
+// Helper: check admin (demo-friendly: query/header role)
 function isAdmin(req) {
   return req.query.role === 'admin' || req.headers['x-role'] === 'admin';
 }
 
-// Helper: check student (simulate via ?role=student or header)
+// Helper: check student (demo-friendly: query/header role)
 function isStudent(req) {
   return req.query.role === 'student' || req.headers['x-role'] === 'student';
 }
@@ -144,58 +144,18 @@ app.post('/events/:id/register', (req, res) => {
   if (!studentId) return res.status(400).json({ error: 'Missing studentId' });
   if (!studentName || !studentName.trim()) return res.status(400).json({ error: 'Missing studentName' });
 
-  eventStore.get(req.params.id, (err, event) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-
-    // Block registration if event is cancelled, completed, or marked full
-    if (event.status === 'cancelled') {
-      return res.status(400).json({ error: 'Event is cancelled' });
-    }
-    if (event.status === 'completed') {
-      return res.status(400).json({ error: 'Event is completed' });
-    }
-    if (event.status === 'full') {
-      return res.status(400).json({ error: 'Event is full' });
+  eventStore.registerStudentAtomic(req.params.id, studentId, studentName.trim(), (err, result) => {
+    if (err) {
+      if (err.code === 'EVENT_NOT_FOUND') return res.status(404).json({ error: 'Event not found' });
+      if (err.code === 'EVENT_CANCELLED') return res.status(400).json({ error: 'Event is cancelled' });
+      if (err.code === 'EVENT_COMPLETED') return res.status(400).json({ error: 'Event is completed' });
+      if (err.code === 'EVENT_FULL') return res.status(400).json({ error: 'Event is full' });
+      if (err.code === 'ALREADY_REGISTERED') return res.status(400).json({ error: 'Already registered' });
+      if (err.code === 'INVALID_CAPACITY') return res.status(500).json({ error: 'Invalid capacity on event' });
+      return res.status(500).json({ error: 'Database error: ' + err.message });
     }
 
-    const capNum = Number(event.capacity);
-    const capacity = Number.isInteger(capNum) && capNum > 0 ? capNum : Infinity;
-
-    eventStore.getRegistrationCount(req.params.id, (errCount, count) => {
-      if (errCount) return res.status(500).json({ error: 'Database error' });
-      if (count >= capacity) {
-        return res.status(400).json({ error: 'Event is full' });
-      }
-
-      const willBeFull = count + 1 >= capacity;
-
-      eventStore.registerStudent(req.params.id, studentId, studentName.trim(), (regErr) => {
-        if (regErr) {
-          if (regErr.message && regErr.message.includes('UNIQUE')) {
-            return res.status(400).json({ error: 'Already registered' });
-          }
-          return res.status(500).json({ error: 'Database error: ' + regErr.message });
-        }
-
-        if (willBeFull && event.status !== 'full') {
-          const updatedEvent = {
-            title: event.title,
-            date: event.date,
-            location: event.location,
-            description: event.description,
-            capacity: event.capacity,
-            status: 'full'
-          };
-          // Best-effort status sync so UI reflects capacity reached
-          return eventStore.update(req.params.id, updatedEvent, () => {
-            res.status(201).json({ message: 'Registered successfully', status: 'full' });
-          });
-        }
-
-        res.status(201).json({ message: 'Registered successfully', status: event.status });
-      });
-    });
+    return res.status(201).json({ message: 'Registered successfully', status: result.status, spotsLeft: result.spotsLeft });
   });
 });
 
@@ -222,7 +182,6 @@ app.get('/events/:id/registered/:studentId', (req, res) => {
 // Get event registrations (admin only)
 app.get('/events/:id/registrations', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'Admin only' });
-  
   eventStore.getRegistrations(req.params.id, (err, registrations) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json({ registrations, count: registrations.length });
@@ -236,7 +195,10 @@ app.get('/events/:id/capacity', (req, res) => {
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
     const capNum = Number(event.capacity);
-    const capacity = Number.isInteger(capNum) && capNum > 0 ? capNum : 0;
+    if (!Number.isInteger(capNum) || capNum < 1) {
+      return res.status(500).json({ error: 'Invalid capacity on event' });
+    }
+    const capacity = capNum;
 
     eventStore.getRegistrationCount(req.params.id, (errCount, count) => {
       if (errCount) return res.status(500).json({ error: 'Database error' });
