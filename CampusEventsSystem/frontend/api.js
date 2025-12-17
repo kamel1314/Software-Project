@@ -1,4 +1,4 @@
-console.log("✅ Script connected!");
+console.log("✅ API Client connected!");
 
 const API_URL = "http://localhost:3001/events";
 
@@ -516,3 +516,4 @@ async function deleteEvent(eventId) {
     alert("❌ Failed to delete event. Make sure you're logged in as admin.");
   }
 }
+
