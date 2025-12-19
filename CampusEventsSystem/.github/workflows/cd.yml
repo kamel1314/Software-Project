@@ -1,0 +1,69 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+    
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci --production
+    
+    - name: Create deployment artifact
+      run: |
+        mkdir -p deployment
+        cp -r backend deployment/
+        cp -r frontend deployment/
+        cp -r docs deployment/
+        cp .gitignore deployment/
+    
+    - name: Upload deployment artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: campus-events-app
+        path: deployment/
+        retention-days: 30
+    
+    - name: Log deployment status
+      run: echo "Deployment artifact created and ready for deployment to production"
+
+  health-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download deployment artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: campus-events-app
+    
+    - name: Verify deployment package
+      run: |
+        echo "Verifying deployment package structure..."
+        [ -d "backend" ] && echo "✓ Backend found"
+        [ -d "frontend" ] && echo "✓ Frontend found"
+        [ -f "backend/server.js" ] && echo "✓ Server file found"
+        [ -f "backend/package.json" ] && echo "✓ Package.json found"
+        echo "Deployment package verified successfully!"

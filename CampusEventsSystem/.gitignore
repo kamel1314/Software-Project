@@ -20,3 +20,31 @@ npm-debug.log*
 # Build outputs
 dist/
 build/
+
+# CI/CD
+node_modules/
+.env.local
+.env.*.local
+coverage/
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.nyc_output/
+*.lcov
+
+# Logs
+logs/
+*.log
+npm-debug.log*
