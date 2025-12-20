@@ -1,0 +1,21 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+  <span class="navbar-text text-white fw-bold">
+    👋 Hi, <span id="nav-username"></span>
+  </span>
+
+  <div class="ms-auto">
+    <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<script>
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (user) {
+    document.getElementById("nav-username").innerText = user.name;
+  }
+
+  function logout() {
+    localStorage.removeItem("user");
+    window.location.href = "pages/auth.html";
+  }
+</script>
