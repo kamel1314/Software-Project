@@ -1,3 +1,6 @@
+"test file for backend server functionality to make sure the backend server is set up correctly."
+
+
 describe('Server Tests', () => {
   test('should pass basic test', () => {
     expect(true).toBe(true);
