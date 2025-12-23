@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Event</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div id="navbar"></div>
+
+<div class="container mt-4">
+  <h2>Add Event</h2>
+
+  <form id="addEventForm">
+    <input id="title" placeholder="Title" class="form-control mb-2">
+    <input id="date" type="date" class="form-control mb-2">
+    <input id="location" placeholder="Location" class="form-control mb-2">
+    <input id="capacity" type="number" class="form-control mb-2">
+    <textarea id="description" placeholder="Description" class="form-control mb-2"></textarea>
+    <button class="btn btn-primary">Submit</button>
+  </form>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/main.js"></script>
+<script src="../js/api.js"></script>
+
+<script>
+document.getElementById("addEventForm").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const event = {
+    title: title.value,
+    date: date.value,
+    location: location.value,
+    capacity: capacity.value,
+    description: description.value,
+  };
+
+  const ok = await addEvent(event);
+  if (ok) location.href = "event.html";
+});
+</script>
+
+</body>
+</html>

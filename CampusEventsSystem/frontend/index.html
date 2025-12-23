@@ -3,18 +3,26 @@
 <head>
   <title>Campus Events</title>
   <link rel="stylesheet" href="style.css">
-</head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    .actions { margin: 16px 0; }
+    #addAdminBtn { background: #ff6b6b; }
+  </style>
+  </head>
 <body>
   <h1>🎓 Campus Events</h1>
   <div id="admin-header" style="display: none; background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
     <p style="margin: 0;"><b>👤 Logged in as:</b> <span id="admin-name"></span></p>
   </div>
 
-  <div id="events-container"></div>
+  <div class="actions">
+    <!-- These buttons will only appear for admins (handled in api.js) -->
+    <button id="addEventBtn" onclick="window.location.href='add-event.html'">➕ Add New Event</button>
+    <button id="addAdminBtn" onclick="window.location.href='add-admin.html'" style="display: none; margin-left: 10px;">👤 Add New Admin</button>
+  </div>
 
-  <!-- This button will only appear for admins -->
-  <button id="addEventBtn" onclick="window.location.href='add-event.html'">➕ Add New Event</button>
-  <button id="addAdminBtn" onclick="window.location.href='add-admin.html'" style="display: none; margin-left: 10px; background: #ff6b6b;">👤 Add New Admin</button>
+  <div id="events-container"></div>
 
   <br><br>
   <a href="role.html">← Back to Role Selection</a>
