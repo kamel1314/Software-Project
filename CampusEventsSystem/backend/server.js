@@ -225,6 +225,66 @@ app.get('/analytics/events', (req, res) => {
   });
 });
 
+// Verify admin ID
+app.post('/auth/verify-admin', (req, res) => {
+  const { adminId } = req.body;
+  if (!adminId || !adminId.trim()) {
+    return res.status(400).json({ error: 'Admin ID required' });
+  }
+
+  eventStore.isAdminIdValid(adminId.trim(), (err, result) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (result.valid) {
+      res.json({ valid: true, name: result.name, message: 'Admin verified' });
+    } else {
+      res.status(401).json({ valid: false, error: 'Unknown user — access denied' });
+    }
+  });
+});
+
+// Add new admin (requires verification from existing admin)
+app.post('/auth/add-admin', (req, res) => {
+  const { verifyAdminId, newAdminId, newAdminName } = req.body;
+
+  // Validate inputs
+  if (!verifyAdminId || !verifyAdminId.trim()) {
+    return res.status(400).json({ error: 'Verification admin ID required' });
+  }
+  if (!newAdminId || !newAdminId.trim()) {
+    return res.status(400).json({ error: 'New admin ID required' });
+  }
+  if (!newAdminName || !newAdminName.trim()) {
+    return res.status(400).json({ error: 'New admin name required' });
+  }
+
+  // Verify the requester is a valid admin
+  eventStore.isAdminIdValid(verifyAdminId.trim(), (err, result) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!result.valid) {
+      return res.status(403).json({ error: 'You are not authorized to add admins' });
+    }
+
+    // Check if new admin ID already exists
+    eventStore.isAdminIdValid(newAdminId.trim(), (checkErr, checkResult) => {
+      if (checkErr) return res.status(500).json({ error: 'Database error' });
+      if (checkResult.valid) {
+        return res.status(400).json({ error: 'This admin ID already exists' });
+      }
+
+      // Add the new admin
+      eventStore.addAdmin(newAdminId.trim(), newAdminName.trim(), (addErr) => {
+        if (addErr) {
+          if (addErr.message && addErr.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'This admin ID already exists' });
+          }
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.status(201).json({ valid: true, message: `Admin ${newAdminName} added successfully` });
+      });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
