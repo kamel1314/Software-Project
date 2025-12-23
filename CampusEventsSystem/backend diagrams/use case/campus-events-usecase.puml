@@ -1,0 +1,72 @@
+@startuml Campus Events System - Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+
+actor Student
+actor Admin
+
+rectangle "Campus Events System" {
+  
+  ' Authentication
+  usecase (Sign Up) as signup
+  usecase (Log In) as login
+  usecase (Log Out) as logout
+  
+  ' Student Features
+  usecase (Browse Events) as browse
+  usecase (View Event Details) as details
+  usecase (Search Events) as search
+  usecase (Register for Event) as register
+  usecase (Unregister from Event) as unregister
+  usecase (View My Registrations) as myReg
+  usecase (Check Registration Status) as status
+  
+  ' Admin Features
+  usecase (Create Event) as create
+  usecase (Update Event) as update
+  usecase (Delete Event) as delete
+  usecase (View All Events) as viewAll
+  usecase (Manage Users) as manageUsers
+  usecase (Add Admin) as addAdmin
+  usecase (View Analytics) as analytics
+  usecase (View Attendance) as attendance
+  
+  ' Student Actions
+  Student --> signup
+  Student --> login
+  Student --> logout
+  Student --> browse
+  Student --> details
+  Student --> search
+  Student --> register
+  Student --> unregister
+  Student --> myReg
+  Student --> status
+  
+  ' Admin Actions
+  Admin --> login
+  Admin --> logout
+  Admin --> create
+  Admin --> update
+  Admin --> delete
+  Admin --> viewAll
+  Admin --> manageUsers
+  Admin --> addAdmin
+  Admin --> analytics
+  Admin --> attendance
+}
+
+note right of Student
+  Students can view and
+  search events, then
+  register or unregister
+end note
+
+note right of Admin
+  Admins manage all events,
+  users, and view system
+  analytics
+end note
+
+@enduml
+
