@@ -20,13 +20,14 @@ CREATE TABLE registrations (
   student_name TEXT
 );
 
--- ============ EVENTS DATA ============
-INSERT INTO events VALUES(2, 'python', '2025-12-13', 'room22', 'bring laptop', 100, 'upcoming');
-INSERT INTO events VALUES(3, 'IEEE', '2026-01-13', 'room 26', 'bring your laptop', 25, 'upcoming');
+CREATE TABLE admins (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id TEXT NOT NULL UNIQUE,
+  name TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
--- ============ REGISTRATIONS DATA ============
-INSERT INTO registrations VALUES(5, 2, '231002424', '2025-12-09 01:26:07', NULL);
-INSERT INTO registrations VALUES(7, 2, '231002427', '2025-12-09 21:05:35', 'kamel walid');
-INSERT INTO registrations VALUES(8, 3, '231000245', '2025-12-10 08:19:12', 'kamel walid');
-INSERT INTO registrations VALUES(9, 2, '231000245', '2025-12-10 08:19:26', 'kamel walid');
-INSERT INTO registrations VALUES(10, 2, '123456789', '2025-12-10 09:09:29', '345678');
+-- ============ ADMINS DATA ============
+INSERT INTO admins (admin_id, name) VALUES('231002427', 'kamel');
+INSERT INTO admins (admin_id, name) VALUES('231000669', 'shahd');
+INSERT INTO admins (admin_id, name) VALUES('231000132', 'Abdelrahman');

@@ -1,3 +1,5 @@
+#The Dockerfile prepares the app to run in a ready-made environment, so it works the same on any computer without installing anything manually.
+
 FROM node:18-alpine
 
 WORKDIR /app

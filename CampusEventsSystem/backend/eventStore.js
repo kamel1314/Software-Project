@@ -44,6 +44,29 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL UNIQUE,
+      name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Seed default admins if table is empty
+  db.get('SELECT COUNT(*) as count FROM admins', (err, row) => {
+    if (!err && row && row.count === 0) {
+      const defaultAdmins = [
+        { admin_id: '231002427', name: 'kamel' },
+        { admin_id: '231000669', name: 'shahd' },
+        { admin_id: '231000132', name: 'Abdelrahman' }
+      ];
+      defaultAdmins.forEach(admin => {
+        db.run('INSERT INTO admins (admin_id, name) VALUES (?, ?)', [admin.admin_id, admin.name]);
+      });
+    }
+  });
+
   // Backfill columns for older databases (best effort)
   ensureColumn('events', 'capacity', 'INTEGER NOT NULL DEFAULT 100');
   ensureColumn('events', 'status', "TEXT NOT NULL DEFAULT 'upcoming'");
@@ -267,6 +290,48 @@ module.exports = {
           spotsLeft: Math.max(0, (row.capacity || 0) - (row.registrations || 0)),
         }));
         callback(null, stats);
+      }
+    );
+  },
+
+  // Admin helpers
+  isAdminIdValid: (adminId, callback) => {
+    db.get(
+      'SELECT admin_id, name FROM admins WHERE admin_id = ?',
+      [adminId],
+      (err, row) => {
+        if (err) return callback(err, null);
+        if (row) {
+          callback(null, { valid: true, name: row.name });
+        } else {
+          callback(null, { valid: false });
+        }
+      }
+    );
+  },
+
+  getAllAdmins: (callback) => {
+    db.all('SELECT admin_id, name, created_at FROM admins ORDER BY created_at ASC', (err, rows) => {
+      callback(err, rows || []);
+    });
+  },
+
+  addAdmin: (adminId, name, callback) => {
+    db.run(
+      'INSERT INTO admins (admin_id, name) VALUES (?, ?)',
+      [adminId, name || null],
+      function(err) {
+        callback(err);
+      }
+    );
+  },
+
+  removeAdmin: (adminId, callback) => {
+    db.run(
+      'DELETE FROM admins WHERE admin_id = ?',
+      [adminId],
+      function(err) {
+        callback(err);
       }
     );
   },

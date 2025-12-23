@@ -20,12 +20,7 @@
   </div>
 
   <script>
-    // 🧩 Step 1 — Only these IDs are valid admins
-    const allowedAdmins = [
-      "231002427",
-      "231000669",
-      "231000132"
-    ];
+    const API_URL = "http://localhost:3001";
 
     // Student role
     function setRole(role) {
@@ -38,18 +33,47 @@
       document.getElementById("admin-login").style.display = "block";
     }
 
-    // Verify Admin ID
-    function verifyAdmin() {
+    // Verify Admin ID against database
+    async function verifyAdmin() {
       const adminId = document.getElementById("adminId").value.trim();
       const errorMsg = document.getElementById("loginError");
+      const loginBtn = document.querySelector("#admin-login button");
 
-      if (allowedAdmins.includes(adminId)) {
-        localStorage.setItem("role", "admin");
-        localStorage.setItem("adminId", adminId); // store who logged in
-        alert("✅ Welcome, Admin " + adminId + "!");
-        window.location.href = "index.html";
-      } else {
-        errorMsg.innerText = "❌ Unknown user — access denied.";
+      if (!adminId) {
+        errorMsg.innerText = "❌ Please enter an Admin ID.";
+        return;
+      }
+
+      // Disable button and show loading
+      loginBtn.disabled = true;
+      loginBtn.innerText = "Verifying...";
+      errorMsg.innerText = "";
+
+      try {
+        const response = await fetch(API_URL + "/auth/verify-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ adminId })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.valid) {
+          localStorage.setItem("role", "admin");
+          localStorage.setItem("adminId", adminId);
+          localStorage.setItem("adminName", data.name);
+          alert("✅ Welcome, " + data.name + "!");
+          window.location.href = "index.html";
+        } else {
+          errorMsg.innerText = data.error || "❌ Unknown user — access denied.";
+          loginBtn.disabled = false;
+          loginBtn.innerText = "Login";
+        }
+      } catch (error) {
+        console.error("Error verifying admin:", error);
+        errorMsg.innerText = "❌ Connection error. Please check the server is running.";
+        loginBtn.disabled = false;
+        loginBtn.innerText = "Login";
       }
     }
   </script>

@@ -147,8 +147,23 @@ async function checkRegistration(eventId, studentId) {
 document.addEventListener("DOMContentLoaded", function () {
   const role = getRole();
   const addBtn = document.getElementById("addEventBtn");
+  const addAdminBtn = document.getElementById("addAdminBtn");
+  
   if (addBtn && role === "student") {
     addBtn.style.display = "none"; // hide Add button
+  }
+
+  // Show admin buttons if logged in as admin
+  if (role === "admin") {
+    if (addAdminBtn) {
+      addAdminBtn.style.display = "inline-block";
+    }
+    const adminHeader = document.getElementById("admin-header");
+    const adminName = localStorage.getItem("adminName");
+    if (adminHeader && adminName) {
+      adminHeader.style.display = "block";
+      document.getElementById("admin-name").innerText = adminName;
+    }
   }
 });
 

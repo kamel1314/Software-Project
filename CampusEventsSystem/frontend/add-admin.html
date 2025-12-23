@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>➕ Add New Admin</h1>
+  
+  <div id="admin-check" style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+    <p><b>⚠️ Only admins can add new admins</b></p>
+    <p id="admin-status">Loading...</p>
+  </div>
+
+  <form id="add-admin-form" style="display: none;">
+    <fieldset>
+      <legend>Admin Verification & Registration</legend>
+
+      <label>Your Admin ID (for verification):</label><br>
+      <input type="text" id="verifyAdminId" placeholder="Enter your 9-digit admin ID" maxlength="9" required><br><br>
+
+      <label>New Admin ID:</label><br>
+      <input type="text" id="newAdminId" placeholder="Enter new admin's ID" maxlength="9" required><br><br>
+
+      <label>New Admin Name:</label><br>
+      <input type="text" id="newAdminName" placeholder="Enter new admin's full name" required><br><br>
+
+      <button type="submit">✅ Add New Admin</button>
+    </fieldset>
+  </form>
+
+  <p id="message" style="margin-top: 20px; padding: 10px; border-radius: 5px;"></p>
+
+  <br><br>
+  <a href="index.html">← Back to Events</a>
+
+  <script>
+    const API_URL = "http://localhost:3001";
+
+    // Check if user is admin
+    document.addEventListener("DOMContentLoaded", function () {
+      const role = localStorage.getItem("role");
+      const adminName = localStorage.getItem("adminName");
+      const adminStatus = document.getElementById("admin-status");
+      const form = document.getElementById("add-admin-form");
+
+      if (role === "admin" && adminName) {
+        adminStatus.innerHTML = `<span style="color: green;">✅ You are logged in as: <b>${adminName}</b></span>`;
+        form.style.display = "block";
+      } else {
+        adminStatus.innerHTML = `<span style="color: red;">❌ You must be logged in as an admin to add new admins.</span>`;
+        form.style.display = "none";
+      }
+    });
+
+    // Handle form submission
+    document.getElementById("add-admin-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const verifyAdminId = document.getElementById("verifyAdminId").value.trim();
+      const newAdminId = document.getElementById("newAdminId").value.trim();
+      const newAdminName = document.getElementById("newAdminName").value.trim();
+      const message = document.getElementById("message");
+
+      // Validate inputs
+      if (verifyAdminId.length !== 9 || isNaN(verifyAdminId)) {
+        message.style.color = "red";
+        message.innerText = "❌ Your admin ID must be exactly 9 digits.";
+        return;
+      }
+
+      if (newAdminId.length !== 9 || isNaN(newAdminId)) {
+        message.style.color = "red";
+        message.innerText = "❌ New admin ID must be exactly 9 digits.";
+        return;
+      }
+
+      if (!newAdminName) {
+        message.style.color = "red";
+        message.innerText = "❌ Please enter the new admin's name.";
+        return;
+      }
+
+      if (verifyAdminId === newAdminId) {
+        message.style.color = "red";
+        message.innerText = "❌ New admin ID must be different from your ID.";
+        return;
+      }
+
+      // Show loading
+      message.style.color = "blue";
+      message.innerText = "⏳ Adding new admin...";
+
+      try {
+        const response = await fetch(API_URL + "/auth/add-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            verifyAdminId,
+            newAdminId,
+            newAdminName
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          message.style.color = "green";
+          message.innerHTML = `✅ <b>${newAdminName}</b> (ID: ${newAdminId}) has been added as admin!`;
+          document.getElementById("add-admin-form").reset();
+        } else {
+          message.style.color = "red";
+          message.innerText = "❌ " + (data.error || "Failed to add admin");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        message.style.color = "red";
+        message.innerText = "❌ Connection error. Please check the server is running.";
+      }
+    });
+  </script>
+</body>
+</html>
