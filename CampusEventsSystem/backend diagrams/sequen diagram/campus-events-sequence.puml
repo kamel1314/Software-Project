@@ -64,8 +64,7 @@ Frontend --> Admin: ✓ Event Created
 
 == Browse Events ==
 autonumber
-actor User
-User -> Frontend: Visit Events Page
+Student -> Frontend: Visit Events Page
 Frontend -> API: GET /events
 activate API
 
@@ -80,7 +79,7 @@ deactivate Store
 
 API --> Frontend: 200 OK\n[events]
 deactivate API
-Frontend --> User: Display Event List
+Frontend --> Student: Display Event List
 
 @enduml
 
