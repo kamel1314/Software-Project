@@ -1,0 +1,425 @@
+@startuml Campus Events System - Main Flows
+
+'=== Student Registration ===
+actor Student
+participant "Frontend" as Frontend
+participant "API Server" as API
+participant "EventStore" as Store
+database "Database" as DB
+
+== Student Event Registration ==
+autonumber
+Student -> Frontend: Click "Register for Event"
+Frontend -> API: POST /events/:id/register\n{studentId, studentName}
+activate API
+
+API -> API: Check Student Role
+API -> Store: registerStudentAtomic()
+activate Store
+
+Store -> DB: BEGIN TRANSACTION
+activate DB
+Store -> DB: Check Event Status & Capacity
+Store -> DB: INSERT Registration
+Store -> DB: Update Event Status if Full
+Store -> DB: COMMIT
+DB --> Store: Success
+deactivate DB
+
+Store --> API: {status, spotsLeft}
+deactivate Store
+API --> Frontend: 201 Created
+deactivate API
+Frontend --> Student: ✓ Registered Successfully
+
+|||
+|||
+
+== Admin Create Event ==
+autonumber
+actor Admin
+Admin -> Frontend: Fill Event Form\n(title, date, location, capacity)
+Admin -> Frontend: Click "Add Event"
+Frontend -> API: POST /events\n{event details}
+activate API
+
+API -> API: Check Admin Role
+API -> API: Validate Event Data
+API -> Store: add(eventData)
+activate Store
+
+Store -> DB: INSERT INTO events\n(title, date, location, capacity, status)
+activate DB
+DB --> Store: Event Created
+deactivate DB
+
+Store --> API: Success
+deactivate Store
+API --> Frontend: 201 Created
+deactivate API
+Frontend --> Admin: ✓ Event Created
+
+|||
+|||
+
+== Browse Events ==
+autonumber
+Student -> Frontend: Visit Events Page
+Frontend -> API: GET /events
+activate API
+
+API -> Store: getAll()
+activate Store
+Store -> DB: SELECT * FROM events
+activate DB
+DB --> Store: All Events
+deactivate DB
+Store --> API: events[]
+deactivate Store
+
+API --> Frontend: 200 OK\n[events]
+deactivate API
+Frontend --> Student: Display Event List
+
+@enduml
+
+== Authentication & Registration ==
+Student -> Frontend: Click "Register" button
+Frontend -> Student: Prompt for Student ID & Name
+Student -> Frontend: Enter credentials
+Frontend -> Frontend: Store in sessionStorage
+
+== Registration Request ==
+Frontend -> API: POST /events/:id/register\n{studentId, studentName, role:student}
+activate API
+
+== Authorization Check ==
+API -> API: isStudent(req)
+alt Not Student Role
+  API --> Frontend: 403 Forbidden
+  Frontend --> Student: Show error
+  [<-- Student
+end
+
+== Validation ==
+API -> API: Validate studentId & studentName
+alt Validation Failed
+  API --> Frontend: 400 Bad Request\n(Missing fields)
+  Frontend --> Student: Show validation error
+  [<-- Student
+end
+
+== Atomic Registration Process ==
+API -> Store: registerStudentAtomic(eventId, studentId, studentName)
+activate Store
+
+Store -> DB: BEGIN IMMEDIATE TRANSACTION
+activate DB
+
+Store -> DB: SELECT * FROM events WHERE id = ?
+DB --> Store: Event data
+
+alt Event Not Found
+  Store -> DB: ROLLBACK
+  Store --> API: Error: EVENT_NOT_FOUND
+  API --> Frontend: 404 Not Found
+  Frontend --> Student: Event not found
+  [<-- Student
+end
+
+alt Event Cancelled
+  Store -> DB: ROLLBACK
+  Store --> API: Error: EVENT_CANCELLED
+  API --> Frontend: 400 Bad Request
+  Frontend --> Student: Event is cancelled
+  [<-- Student
+end
+
+alt Event Completed
+  Store -> DB: ROLLBACK
+  Store --> API: Error: EVENT_COMPLETED
+  API --> Frontend: 400 Bad Request
+  Frontend --> Student: Event already completed
+  [<-- Student
+end
+
+alt Event Status is Full
+  Store -> DB: ROLLBACK
+  Store --> API: Error: EVENT_FULL
+  API --> Frontend: 400 Bad Request
+  Frontend --> Student: Event is full
+  [<-- Student
+end
+
+Store -> DB: SELECT COUNT(*) as count\nFROM registrations\nWHERE event_id = ?
+DB --> Store: Current registration count
+
+alt Capacity Reached
+  Store -> DB: ROLLBACK
+  Store --> API: Error: EVENT_FULL
+  API --> Frontend: 400 Bad Request
+  Frontend --> Student: No spots available
+  [<-- Student
+end
+
+Store -> DB: INSERT INTO registrations\n(event_id, student_id, student_name)\nVALUES (?, ?, ?)
+
+alt Already Registered (UNIQUE constraint)
+  Store -> DB: ROLLBACK
+  Store --> API: Error: ALREADY_REGISTERED
+  API --> Frontend: 400 Bad Request
+  Frontend --> Student: You're already registered
+  [<-- Student
+end
+
+DB --> Store: Insert successful
+
+== Auto-Update Event Status ==
+Store -> Store: Calculate: newCount = count + 1\nspotsLeft = capacity - newCount
+
+alt Event Now Full (newCount >= capacity)
+  Store -> DB: UPDATE events\nSET status = 'full'\nWHERE id = ?
+  DB --> Store: Update successful
+end
+
+Store -> DB: COMMIT
+deactivate DB
+Store --> API: Success {status, spotsLeft}
+deactivate Store
+
+== Success Response ==
+API --> Frontend: 201 Created\n{message, status, spotsLeft}
+deactivate API
+Frontend --> Student: ✓ Registration successful\nSpots left: X
+deactivate Frontend
+
+newpage
+
+'=== Admin Create Event Flow ===
+title Admin Create Event Flow
+
+actor Admin
+participant "Frontend\n(Browser)" as AdminFrontend
+participant "API\n(/events)" as CreateAPI
+participant "EventStore" as CreateStore
+database "SQLite\nDatabase" as CreateDB
+
+autonumber
+
+== Event Creation ==
+Admin -> AdminFrontend: Fill event form\n(title, date, location, description, capacity, status)
+AdminFrontend -> AdminFrontend: Validate form inputs
+Admin -> AdminFrontend: Click "Add Event"
+
+== API Request ==
+AdminFrontend -> CreateAPI: POST /events?role=admin\n{title, date, location, description, capacity, status}
+activate CreateAPI
+
+== Authorization Check ==
+CreateAPI -> CreateAPI: isAdmin(req)
+alt Not Admin Role
+  CreateAPI --> AdminFrontend: 403 Forbidden
+  AdminFrontend --> Admin: Admin access required
+  [<-- Admin
+end
+
+== Payload Validation ==
+CreateAPI -> CreateAPI: validateEventPayload(body)
+CreateAPI -> CreateAPI: - Sanitize strings\n- Validate date (YYYY-MM-DD, future)\n- Check capacity (1-100000)\n- Validate status (upcoming/full/cancelled/completed)\n- Check field lengths
+
+alt Validation Failed
+  CreateAPI --> AdminFrontend: 400 Bad Request\n{error: validation message}
+  AdminFrontend --> Admin: Show validation error
+  [<-- Admin
+end
+
+== Database Operation ==
+CreateAPI -> CreateStore: add(eventData)
+activate CreateStore
+
+CreateStore -> CreateDB: INSERT INTO events\n(title, date, location, description, capacity, status)\nVALUES (?, ?, ?, ?, ?, ?)
+activate CreateDB
+
+alt Database Error
+  CreateDB --> CreateStore: Error
+  CreateStore --> CreateAPI: Error
+  CreateAPI --> AdminFrontend: 500 Internal Server Error
+  AdminFrontend --> Admin: Failed to create event
+  [<-- Admin
+end
+
+CreateDB --> CreateStore: Insert successful (id: autoincrement)
+deactivate CreateDB
+CreateStore --> CreateAPI: Success
+deactivate CreateStore
+
+== Success Response ==
+CreateAPI --> AdminFrontend: 201 Created\n{message: "Event added"}
+deactivate CreateAPI
+AdminFrontend --> Admin: ✓ Event created successfully
+AdminFrontend -> AdminFrontend: Refresh event list
+deactivate AdminFrontend
+
+newpage
+
+'=== Browse Events Flow ===
+title Browse Events Flow (All Users)
+
+actor User
+participant "Frontend\n(Browser)" as BrowseFrontend
+participant "API\n(/events)" as BrowseAPI
+participant "EventStore" as BrowseStore
+database "SQLite\nDatabase" as BrowseDB
+
+autonumber
+
+== Load Events ==
+User -> BrowseFrontend: Navigate to Events page
+BrowseFrontend -> BrowseAPI: GET /events
+activate BrowseAPI
+
+== Fetch All Events ==
+BrowseAPI -> BrowseStore: getAll(callback)
+activate BrowseStore
+
+BrowseStore -> BrowseDB: SELECT * FROM events
+activate BrowseDB
+BrowseDB --> BrowseStore: All events array
+deactivate BrowseDB
+
+BrowseStore --> BrowseAPI: events[]
+deactivate BrowseStore
+
+== Return Events ==
+BrowseAPI --> BrowseFrontend: 200 OK\n[{id, title, date, location, description, capacity, status}, ...]
+deactivate BrowseAPI
+
+== Display Events ==
+BrowseFrontend -> BrowseFrontend: Render event cards with:\n- Title, Date, Location\n- Capacity & Status\n- Register/View buttons
+BrowseFrontend --> User: Display all events
+deactivate BrowseFrontend
+
+newpage
+
+'=== Admin Verify & Add Admin Flow ===
+title Admin Authentication & Add New Admin Flow
+
+actor ExistingAdmin
+participant "Frontend\n(Browser)" as AdminAuthFrontend
+participant "API\n(/auth)" as AuthAPI
+participant "EventStore" as AdminStore
+database "SQLite\nDatabase" as AdminDB
+
+autonumber
+
+== Admin Login Verification ==
+ExistingAdmin -> AdminAuthFrontend: Enter Admin ID
+AdminAuthFrontend -> AuthAPI: POST /auth/verify-admin\n{adminId}
+activate AuthAPI
+
+AuthAPI -> AuthAPI: Validate adminId not empty
+
+AuthAPI -> AdminStore: isAdminIdValid(adminId)
+activate AdminStore
+
+AdminStore -> AdminDB: SELECT * FROM admins\nWHERE admin_id = ?
+activate AdminDB
+
+alt Admin Not Found
+  AdminDB --> AdminStore: NULL
+  AdminStore --> AuthAPI: {valid: false}
+  AuthAPI --> AdminAuthFrontend: 401 Unauthorized\n{valid: false, error: "Unknown user"}
+  AdminAuthFrontend --> ExistingAdmin: Access denied
+  [<-- ExistingAdmin
+end
+
+AdminDB --> AdminStore: Admin record {admin_id, name}
+deactivate AdminDB
+AdminStore --> AuthAPI: {valid: true, name}
+deactivate AdminStore
+
+AuthAPI --> AdminAuthFrontend: 200 OK\n{valid: true, name, message: "Admin verified"}
+deactivate AuthAPI
+
+AdminAuthFrontend --> ExistingAdmin: ✓ Welcome, {name}
+AdminAuthFrontend -> AdminAuthFrontend: Store role='admin' in localStorage
+AdminAuthFrontend -> AdminAuthFrontend: Redirect to admin dashboard
+
+== Add New Admin ==
+ExistingAdmin -> AdminAuthFrontend: Navigate to Add Admin page
+ExistingAdmin -> AdminAuthFrontend: Enter verification ID,\nnew admin ID, new admin name
+AdminAuthFrontend -> AuthAPI: POST /auth/add-admin\n{verifyAdminId, newAdminId, newAdminName}
+activate AuthAPI
+
+AuthAPI -> AuthAPI: Validate all fields present
+
+== Verify Requester is Admin ==
+AuthAPI -> AdminStore: isAdminIdValid(verifyAdminId)
+activate AdminStore
+AdminStore -> AdminDB: SELECT * FROM admins\nWHERE admin_id = ?
+activate AdminDB
+
+alt Requester Not Admin
+  AdminDB --> AdminStore: NULL
+  deactivate AdminDB
+  AdminStore --> AuthAPI: {valid: false}
+  deactivate AdminStore
+  AuthAPI --> AdminAuthFrontend: 403 Forbidden\n"Not authorized to add admins"
+  AdminAuthFrontend --> ExistingAdmin: Authorization failed
+  [<-- ExistingAdmin
+end
+
+AdminDB --> AdminStore: Admin verified
+deactivate AdminDB
+AdminStore --> AuthAPI: {valid: true}
+deactivate AdminStore
+
+== Check New Admin Doesn't Exist ==
+AuthAPI -> AdminStore: isAdminIdValid(newAdminId)
+activate AdminStore
+AdminStore -> AdminDB: SELECT * FROM admins\nWHERE admin_id = ?
+activate AdminDB
+
+alt New Admin Already Exists
+  AdminDB --> AdminStore: Existing record
+  deactivate AdminDB
+  AdminStore --> AuthAPI: {valid: true}
+  deactivate AdminStore
+  AuthAPI --> AdminAuthFrontend: 400 Bad Request\n"Admin ID already exists"
+  AdminAuthFrontend --> ExistingAdmin: ID already registered
+  [<-- ExistingAdmin
+end
+
+AdminDB --> AdminStore: NULL (ID available)
+deactivate AdminDB
+AdminStore --> AuthAPI: {valid: false}
+deactivate AdminStore
+
+== Add New Admin ==
+AuthAPI -> AdminStore: addAdmin(newAdminId, newAdminName)
+activate AdminStore
+AdminStore -> AdminDB: INSERT INTO admins\n(admin_id, name)\nVALUES (?, ?)
+activate AdminDB
+
+alt Database Error
+  AdminDB --> AdminStore: Error (UNIQUE constraint)
+  deactivate AdminDB
+  AdminStore --> AuthAPI: Error
+  deactivate AdminStore
+  AuthAPI --> AdminAuthFrontend: 400/500 Error
+  AdminAuthFrontend --> ExistingAdmin: Failed to add admin
+  [<-- ExistingAdmin
+end
+
+AdminDB --> AdminStore: Insert successful
+deactivate AdminDB
+AdminStore --> AuthAPI: Success
+deactivate AdminStore
+
+AuthAPI --> AdminAuthFrontend: 201 Created\n{valid: true, message: "Admin {name} added"}
+deactivate AuthAPI
+
+AdminAuthFrontend --> ExistingAdmin: ✓ New admin added successfully
+deactivate AdminAuthFrontend
+
+@enduml

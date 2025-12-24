@@ -1,0 +1,106 @@
+@startuml Campus Events System - Class Diagram
+
+class Event {
+  - id: int
+  - title: string
+  - date: string (YYYY-MM-DD)
+  - location: string
+  - description: string
+  - capacity: int
+  - status: string (upcoming, full, cancelled, completed)
+  --
+  + getTitle(): string
+  + getCapacity(): int
+  + getStatus(): string
+  + isFull(): boolean
+  + canRegister(): boolean
+}
+
+class Student {
+  - studentId: string (9 digits)
+  - studentName: string
+  - registeredEvents: Registration[]
+  --
+  + register(event): boolean
+  + unregister(event): boolean
+  + isRegistered(event): boolean
+  + viewEvents(): Event[]
+}
+
+class Registration {
+  - id: int
+  - eventId: int
+  - studentId: string
+  - studentName: string
+  - registeredAt: datetime
+  --
+  + getEvent(): Event
+  + getStudent(): Student
+  + cancelRegistration(): boolean
+}
+
+class Admin {
+  - adminId: string
+  - name: string
+  - createdAt: datetime
+  --
+  + createEvent(eventData): Event
+  + updateEvent(id, data): boolean
+  + deleteEvent(id): boolean
+  + getRegistrations(eventId): Registration[]
+  + addNewAdmin(adminId, name): boolean
+}
+
+class EventStore {
+  - database: SQLite
+  --
+  + getAll(): Event[]
+  + get(id): Event
+  + add(event): void
+  + update(id, event): void
+  + delete(id): void
+  + registerStudentAtomic(eventId, studentId, name): Result
+  + unregisterStudent(eventId, studentId): void
+  + getRegistrations(eventId): Registration[]
+  + isStudentRegistered(eventId, studentId): boolean
+}
+
+class APIServer {
+  - port: int = 3001
+  --
+  + GET /events
+  + GET /events/:id
+  + POST /events (admin)
+  + PUT /events/:id (admin)
+  + DELETE /events/:id (admin)
+  + POST /events/:id/register (student)
+  + DELETE /events/:id/register (student)
+  + GET /events/:id/registrations (admin)
+  + POST /auth/verify-admin
+  + POST /auth/add-admin (admin)
+}
+
+' Relationships
+Student "1..*" -- "0..*" Event : registers for >
+Registration "0..*" -- "1" Event : records >
+Registration "0..*" -- "1" Student : belongs to <
+Admin "1" -- "0..*" Event : manages >
+APIServer "1" -- "1" EventStore : uses >
+EventStore "1" -- "0..*" Event : stores >
+EventStore "1" -- "0..*" Registration : stores >
+EventStore "1" -- "0..*" Admin : stores >
+
+note right of Registration
+  Atomic transaction ensures:
+  - Event status validation
+  - Capacity check
+  - UNIQUE constraint on (eventId, studentId)
+  - Auto-update status to 'full'
+end note
+
+note right of Admin
+  Admin must be verified by
+  existing admin to add new admins
+end note
+
+@enduml
