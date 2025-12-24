@@ -1,55 +1,90 @@
-# Project Issues
+# Campus Events System — Project Issues Log
 
-## Open Issues
-- None recorded. Add new items under this section.
+This document lists the main issues encountered during the development of the Campus Events System project, along with their resolution status.  
+It demonstrates problem identification, troubleshooting, and resolution as part of the software engineering process.
 
-## How to Log an Issue
-- Title: concise summary.
-- Description: what happened, steps to reproduce, expected vs actual.
-- Environment: OS, browser, app version, API URL, DB.
-- Severity/Priority: Blocker/P0, High/P1, Medium/P2, Low/P3.
-- Attachments: screenshots, logs, sample payloads.
+---
 
-## Templates
+## Issue 1: Git Branch Deletion — kamel-branch-temp Worktree Issue
 
-### Bug
-- Title: [Bug] concise description
-- Steps to Reproduce:
-  1. ...
-  2. ...
-- Expected:
-- Actual:
-- Scope/Impact:
-- Environment:
-- Logs/Attachments:
-- Severity:
+**Status:** Resolved  
 
-### Feature Request
-- Title: [Feature] concise description
-- Problem Statement:
-- Proposed Solution:
-- Alternatives Considered:
-- Acceptance Criteria:
-- Priority:
+**Description:**  
+An issue occurred when attempting to delete a temporary Git branch that was still attached to an active worktree. Git prevented the deletion to avoid data loss.
 
-### Task/Chore
-- Title: [Chore] concise description
-- Goal:
-- Steps/Deliverables:
-- Definition of Done:
-- Priority:
+**Resolution:**  
+The worktree was properly detached, and the branch was safely removed after switching to a different branch.
 
-## Definitions
-- Severity: technical impact (Blocker/High/Medium/Low).
-- Priority: business urgency (P0/P1/P2/P3).
-- Blocker/P0: stops core flows (create/edit/delete events; register/unregister; capacity/status validation; auth checks).
-- High/P1: major functionality degraded but workarounds exist.
-- Medium/P2: minor issues or UI polish.
-- Low/P3: cosmetic or documentation tweaks.
+---
 
-## Current Risk Areas (track here)
-- Leave empty until identified.
+## Issue 2: Incomplete Use Case Diagram
+
+**Status:** Resolved  
+
+**Description:**  
+The initial use case diagram was missing important system features, specifically authentication-related actions and admin management functionalities.
+
+**Resolution:**  
+The diagram was reviewed and updated to include all relevant student and admin use cases, ensuring alignment with the implemented system features.
+
+---
+
+## Issue 3: Draw.io XML Fragility
+
+**Status:** Resolved  
+
+**Description:**  
+Manual editing of Draw.io diagram XML files caused formatting corruption, making the diagrams unreadable.
+
+**Resolution:**  
+Diagram edits were performed only through the Draw.io graphical editor, avoiding direct XML modification.
+
+---
+
+## Issue 4: Docker / WSL Setup Failure
+
+**Status:** Resolved  
+
+**Description:**  
+Docker and WSL setup failed on the local machine, preventing Docker-based deployment during development.
+
+**Resolution:**  
+Docker was deemed unnecessary for the current development phase. The project was successfully run using local Node.js deployment instead.
+
+---
+
+## Issue 5: PowerShell Execution Policy Blocking npm Scripts
+
+**Status:** Resolved  
+
+**Description:**  
+PowerShell execution policies prevented npm scripts from running, causing issues when starting the backend server.
+
+**Resolution:**  
+The execution policy was adjusted to allow script execution, enabling npm commands to run normally.
+
+---
+
+## Issue 6: Unclear Deployment Documentation
+
+**Status:** Open (Planned Improvement)  
+
+**Description:**  
+The initial deployment documentation did not clearly distinguish between local deployment and Docker-based deployment, leading to confusion.
+
+**Planned Resolution:**  
+Deployment documentation will be improved to clearly explain local deployment as the current setup and Docker as an optional, future enhancement.
+
+---
+
+## Current Project Status
+
+- Frontend and backend are fully operational
+- No blocking issues remain
+- System is stable and ready for evaluation
+
+---
 
 ## Notes
-- Keep issues small and actionable.
-- Link issues to epics in BACKLOG.md when relevant.
+
+This issue log is maintained to document development challenges and demonstrate effective problem-solving during the project lifecycle.
